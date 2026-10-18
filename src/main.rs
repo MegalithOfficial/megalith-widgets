@@ -1,6 +1,7 @@
 mod desktop;
 mod github;
 mod prefs;
+mod repository;
 mod ui;
 
 use adw::prelude::*;
@@ -95,6 +96,37 @@ fn activate(app: &adw::Application) {
         }
     });
     app.add_action(&placement);
+
+    let edit_position = gio::SimpleAction::new_stateful(
+        "edit-position",
+        Some(glib::VariantTy::BOOLEAN),
+        &false.to_variant(),
+    );
+    edit_position.connect_activate({
+        let widget = Rc::downgrade(&widget);
+        move |_, parameter| {
+            if let Some(editing) = parameter.and_then(|value| value.get::<bool>()) {
+                with(&widget, |widget| widget.view.set_position_editing(editing));
+            }
+        }
+    });
+    app.add_action(&edit_position);
+    for name in ["save-position", "reset-position"] {
+        let action = gio::SimpleAction::new(name, None);
+        action.connect_activate({
+            let widget = Rc::downgrade(&widget);
+            move |action, _| {
+                with(&widget, |widget| {
+                    if action.name() == "save-position" {
+                        widget.view.save_position();
+                    } else {
+                        widget.view.reset_position();
+                    }
+                })
+            }
+        });
+        app.add_action(&action);
+    }
 
     let refresh = gio::SimpleAction::new("refresh", None);
     refresh.connect_activate({

@@ -31,11 +31,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self, let screen = NSScreen.screens.first else { return }
             store.placementNotice = nil
             let frame = panel.frame
-            store.updateSettings {
-                $0.corner = .custom
-                $0.customX = Int((frame.minX - screen.visibleFrame.minX).rounded())
-                $0.customY = Int((screen.visibleFrame.maxY - frame.maxY).rounded())
-            }
+            store.previewPosition(
+                x: Int((frame.minX - screen.visibleFrame.minX).rounded()),
+                y: Int((screen.visibleFrame.maxY - frame.maxY).rounded())
+            )
         }
         setUpStatusItem()
         observe()
@@ -64,6 +63,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             .store(in: &subscriptions)
+
+        store.$editingPosition.removeDuplicates()
+            .sink { [weak self] editing in
+                guard let self else { return }
+                panel.isMovable = editing
+                if editing { panel.onManualMove?() }
+            }
+            .store(in: &subscriptions)
+
+        store.positionReset.sink { [weak self] in
+            guard let self else { return }
+            place(store.prefs.settings)
+        }.store(in: &subscriptions)
 
         // Typing needs the panel to be the key window.
         store.$searching.filter { $0 }
@@ -109,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         guard let obstacles = DesktopWindows.obstacles(on: screen) else {
-            store.placementNotice = "Desktop window positions are unavailable. Drag Reviews to place the widget."
+            store.placementNotice = "Desktop window positions are unavailable. Use Custom to set a position."
             panel.setFrameOrigin(fallback)
             return
         }
@@ -117,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.placementNotice = nil
             panel.setFrameOrigin(origin)
         } else {
-            store.placementNotice = "No clear area found. Drag Reviews to place the widget."
+            store.placementNotice = "No clear area found. Use Custom to set a position."
             panel.setFrameOrigin(fallback)
         }
     }
@@ -190,7 +202,7 @@ final class WidgetPanel: NSPanel {
         hasShadow = false
         level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
-        isMovable = true
+        isMovable = false
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
 
@@ -200,6 +212,7 @@ final class WidgetPanel: NSPanel {
     }
 
     func drag(with event: NSEvent) {
+        guard isMovable else { return }
         let original = frame.origin
         performDrag(with: event)
         guard frame.origin != original else { return }

@@ -3,7 +3,7 @@
 use crate::github::{Pr, State};
 use gtk::glib;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
@@ -68,7 +68,16 @@ pub struct Settings {
     pub corner: Corner,
     pub custom_x: i32,
     pub custom_y: i32,
+    #[serde(default)]
+    pub custom_position_set: Option<bool>,
     pub automatic_placement: bool,
+}
+
+impl Settings {
+    pub fn has_custom_position(&self) -> bool {
+        self.custom_position_set
+            .unwrap_or(self.corner == Corner::Custom)
+    }
 }
 
 impl Default for Settings {
@@ -81,6 +90,7 @@ impl Default for Settings {
             corner: Corner::default(),
             custom_x: 10,
             custom_y: 10,
+            custom_position_set: Some(false),
             automatic_placement: true,
         }
     }
@@ -96,6 +106,7 @@ pub struct Prefs {
     ignored: BTreeSet<String>,
     /// `owner/repo` names switched off in settings.
     unwatched: BTreeSet<String>,
+    added_repositories: BTreeSet<String>,
 }
 
 impl Prefs {
@@ -156,14 +167,29 @@ impl Prefs {
     }
 
     pub fn is_watched(&self, repo: &str) -> bool {
-        !self.unwatched.contains(repo)
+        !self
+            .unwatched
+            .iter()
+            .any(|name| name.eq_ignore_ascii_case(repo))
     }
 
     pub fn set_watched(&mut self, repo: &str, watched: bool) {
         if watched {
-            self.unwatched.remove(repo);
-        } else {
+            self.unwatched
+                .retain(|name| !name.eq_ignore_ascii_case(repo));
+        } else if self.is_watched(repo) {
             self.unwatched.insert(repo.to_owned());
+        }
+    }
+
+    pub fn add_repository(&mut self, repo: String) {
+        self.set_watched(&repo, true);
+        if !self
+            .added_repositories
+            .iter()
+            .any(|name| name.eq_ignore_ascii_case(&repo))
+        {
+            self.added_repositories.insert(repo);
         }
     }
 
@@ -176,9 +202,16 @@ impl Prefs {
 
     /// Repositories seen in `prs` plus any switched off, sorted for display.
     pub fn repositories(&self, prs: &[Pr]) -> Vec<String> {
-        let mut repos: BTreeSet<&str> = prs.iter().map(|pr| pr.repo.as_str()).collect();
-        repos.extend(self.unwatched.iter().map(String::as_str));
-        repos.into_iter().map(str::to_owned).collect()
+        let mut repos = BTreeMap::new();
+        for repo in self
+            .added_repositories
+            .iter()
+            .chain(&self.unwatched)
+            .chain(prs.iter().map(|pr| &pr.repo))
+        {
+            repos.insert(repo.to_ascii_lowercase(), repo.clone());
+        }
+        repos.into_values().collect()
     }
 
     /// Forgets pins for PRs that are gone. Ignores are kept, so a reopened
@@ -223,6 +256,23 @@ mod tests {
     }
 
     #[test]
+    fn custom_position_marker_distinguishes_saved_reset_and_legacy_positions() {
+        assert!(!Prefs::default().settings.has_custom_position());
+        let legacy: Prefs = serde_json::from_str(
+            r#"{"settings":{"corner":"custom","custom_x":80,"custom_y":120}}"#,
+        )
+        .unwrap();
+        assert!(legacy.settings.has_custom_position());
+        for saved in [false, true] {
+            let mut prefs = legacy.clone();
+            prefs.settings.custom_position_set = Some(saved);
+            let restored: Prefs =
+                serde_json::from_slice(&serde_json::to_vec(&prefs).unwrap()).unwrap();
+            assert_eq!(restored.settings.has_custom_position(), saved);
+        }
+    }
+
+    #[test]
     fn macos_placement_fields_are_preserved() {
         let json = r#"{"settings":{"corner":"bottom-right","automatic_placement":false,"custom_x":80,"custom_y":120}}"#;
         let prefs: Prefs = serde_json::from_str(json).unwrap();
@@ -231,5 +281,19 @@ mod tests {
         let encoded = serde_json::to_value(&prefs).unwrap();
         assert_eq!(encoded["settings"]["custom_x"], 80);
         assert_eq!(encoded["settings"]["custom_y"], 120);
+    }
+
+    #[test]
+    fn added_repositories_remain_visible_without_pull_requests() {
+        let mut prefs = Prefs::default();
+        prefs.add_repository("Owner/Repo".to_owned());
+        prefs.set_watched("owner/repo", false);
+        assert!(!prefs.is_watched("Owner/Repo"));
+        prefs.add_repository("OWNER/REPO".to_owned());
+        assert!(prefs.is_watched("owner/repo"));
+        assert_eq!(prefs.repositories(&[]).len(), 1);
+        let restored: Prefs = serde_json::from_slice(&serde_json::to_vec(&prefs).unwrap()).unwrap();
+        assert_eq!(restored.repositories(&[]), prefs.repositories(&[]));
+        assert!(restored.is_watched("owner/repo"));
     }
 }

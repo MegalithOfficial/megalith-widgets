@@ -97,10 +97,16 @@ Both apps refresh every two minutes by default. Settings include the refresh
 interval, desktop notifications, draft visibility, repository filters and
 system, light or dark appearance.
 
-Choose one of the four corners in **Position**, or select **Custom** to enter X/Y
-coordinates. On GNOME, layer-shell desktops and macOS, dragging the **Reviews**
-title selects Custom and saves the coordinates to `prefs.json`. Coordinates are
-logical pixels from the top-left of the main display's usable area.
+Choose one of the four corners in **Position**, or select **Custom** and click
+**Set position**. Drag the **Reviews** title with settings open, then click
+**Save position** to save and lock it. **Re-set position** unlocks it again;
+**Reset** clears the saved position and returns it to the top left.
+Coordinates are stored in `prefs.json` as logical pixels from the top-left of
+the main display's usable area.
+
+Add repositories in settings using `owner/repo` or a GitHub repository URL.
+Added repositories stay in the list between sessions and use the same review
+filters as automatically discovered repositories.
 
 Preferences use the same JSON format on both platforms and are stored locally:
 

@@ -119,12 +119,10 @@ export default class MegalithWidgets extends Extension {
             this._actions = Gio.DBusActionGroup.get(Gio.DBus.session, busName, objectPath);
             this._actionSignals = [
                 this._actions.connect('action-added', (_group, name) => {
-                    if (name === 'placement')
-                        this._place();
+                    this._onPlacementAction(name);
                 }),
                 this._actions.connect('action-state-changed', (_group, name) => {
-                    if (name === 'placement')
-                        this._place();
+                    this._onPlacementAction(name);
                 }),
             ];
         }
@@ -150,9 +148,24 @@ export default class MegalithWidgets extends Extension {
         this._window = null;
     }
 
+    _editingPosition() {
+        return this._actions?.get_action_state('edit-position')?.deep_unpack() === true;
+    }
+
+    _onPlacementAction(name) {
+        if (name === 'placement')
+            this._place();
+        else if (name === 'edit-position') {
+            if (this._editingPosition())
+                this._savePosition();
+            else
+                this._place();
+        }
+    }
+
     _place() {
         const window = this._window;
-        if (!window)
+        if (!window || this._editingPosition())
             return;
         const areas = Main.layoutManager.monitors.map((_monitor, index) => window.get_work_area_for_monitor(index));
         const state = this._actions?.get_action_state('placement')?.deep_unpack() ?? ['top-left', 10, 10];
@@ -162,7 +175,7 @@ export default class MegalithWidgets extends Extension {
     }
 
     _savePosition() {
-        if (!this._actions?.has_action('placement'))
+        if (!this._window || !this._editingPosition() || !this._actions?.has_action('placement'))
             return;
         const area = this._window.get_work_area_for_monitor(Main.layoutManager.primaryIndex);
         const frame = this._window.get_frame_rect();

@@ -134,6 +134,8 @@ pub struct Widget {
     pub window: gtk::ApplicationWindow,
     pub refresh_button: gtk::Button,
     card: gtk::Box,
+    move_handle: gtk::WindowHandle,
+    position_draft: Cell<Option<(i32, i32)>>,
     prefs: Rc<RefCell<Prefs>>,
     header: gtk::Stack,
     search_entry: gtk::Text,
@@ -189,9 +191,9 @@ impl Widget {
         title.append(&label("Reviews", &["widget-title"]));
         let move_handle = gtk::WindowHandle::builder()
             .child(&title)
-            .tooltip_text("Drag to move and save a custom position")
+            .tooltip_text("Enable Set position in Settings to move the widget")
             .build();
-        move_handle.set_cursor_from_name(Some("grab"));
+        move_handle.set_can_target(false);
         header.append(&move_handle);
 
         let tabs: Vec<Tab> = Filter::TABS
@@ -333,6 +335,8 @@ impl Widget {
             window,
             refresh_button,
             card,
+            move_handle: move_handle.clone(),
+            position_draft: Cell::new(None),
             prefs,
             header,
             search_entry,
@@ -467,7 +471,7 @@ impl Widget {
             return;
         }
         self.prefs.borrow().save();
-        crate::desktop::sync_position(&self.window, &self.settings());
+        crate::desktop::sync_position(&self.window, &self.effective_position());
         self.refresh_view();
 
         if let Some(toast) = toast {
@@ -484,12 +488,73 @@ impl Widget {
         self.prefs.borrow().settings
     }
 
+    fn effective_position(&self) -> Settings {
+        let mut settings = self.settings();
+        if let Some((x, y)) = self.position_draft.get() {
+            settings.corner = Corner::Custom;
+            settings.custom_x = x;
+            settings.custom_y = y;
+        }
+        settings
+    }
+
+    pub fn editing_position(&self) -> bool {
+        self.position_draft.get().is_some()
+    }
+
     pub fn set_position(&self, corner: Corner, x: i32, y: i32) {
-        self.update_prefs(None, |prefs| {
-            prefs.settings.corner = corner;
-            prefs.settings.custom_x = x;
-            prefs.settings.custom_y = y;
+        if self.editing_position() && corner == Corner::Custom {
+            self.position_draft.set(Some((x, y)));
+        }
+    }
+
+    pub fn set_position_editing(&self, editing: bool) {
+        if editing == self.editing_position()
+            || (editing && self.settings().corner != Corner::Custom)
+        {
+            return;
+        }
+        if editing {
+            let settings = self.settings();
+            self.position_draft
+                .set(Some((settings.custom_x, settings.custom_y)));
+        } else {
+            self.position_draft.set(None);
+        }
+        self.move_handle.set_can_target(editing);
+        self.move_handle
+            .set_cursor_from_name(if editing { Some("grab") } else { None });
+        if let Some(action) = self
+            .window
+            .application()
+            .and_then(|app| app.lookup_action("edit-position"))
+            .and_then(|action| action.downcast::<gio::SimpleAction>().ok())
+        {
+            action.set_state(&editing.to_variant());
+        }
+    }
+
+    pub fn save_position(&self) {
+        let Some((x, y)) = self.position_draft.get() else {
+            return;
+        };
+        self.set_position_editing(false);
+        self.update_settings(|settings| {
+            settings.corner = Corner::Custom;
+            settings.custom_x = x;
+            settings.custom_y = y;
+            settings.custom_position_set = Some(true);
         });
+    }
+
+    pub fn reset_position(&self) {
+        self.set_position_editing(false);
+        self.update_settings(|settings| {
+            settings.custom_x = 10;
+            settings.custom_y = 10;
+            settings.custom_position_set = Some(false);
+        });
+        crate::desktop::sync_position(&self.window, &self.settings());
     }
 
     fn undo(&self) {
@@ -498,7 +563,7 @@ impl Widget {
         };
         self.prefs.replace(before);
         self.prefs.borrow().save();
-        crate::desktop::sync_position(&self.window, &self.settings());
+        crate::desktop::sync_position(&self.window, &self.effective_position());
         self.refresh_view();
         self.toast.set_reveal_child(false);
     }

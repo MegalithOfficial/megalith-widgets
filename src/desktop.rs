@@ -90,9 +90,11 @@ pub fn attach_drag(window: &gtk::ApplicationWindow, handle: &gtk::WindowHandle) 
             .propagation_phase(gtk::PropagationPhase::Capture)
             .build();
         let moved = Rc::new(Cell::new(false));
+        let origin = Rc::new(Cell::new((0, 0)));
         gesture.connect_drag_begin({
             let window = window.downgrade();
             let moved = moved.clone();
+            let origin = origin.clone();
             move |gesture, _, _| {
                 let Some(window) = window.upgrade() else {
                     return;
@@ -114,6 +116,7 @@ pub fn attach_drag(window: &gtk::ApplicationWindow, handle: &gtk::WindowHandle) 
                     window.margin(Edge::Top)
                 };
                 moved.set(false);
+                origin.set((x, y));
                 gesture.set_state(gtk::EventSequenceState::Claimed);
                 position_layer(
                     &window,
@@ -129,6 +132,7 @@ pub fn attach_drag(window: &gtk::ApplicationWindow, handle: &gtk::WindowHandle) 
         gesture.connect_drag_update({
             let window = window.downgrade();
             let moved = moved.clone();
+            let origin = origin.clone();
             move |_, dx, dy| {
                 let Some(window) = window.upgrade() else {
                     return;
@@ -142,9 +146,9 @@ pub fn attach_drag(window: &gtk::ApplicationWindow, handle: &gtk::WindowHandle) 
                     return;
                 };
                 let bounds = monitor.geometry();
-                let x = (window.margin(Edge::Left) + dx.round() as i32)
+                let x = (origin.get().0 + dx.round() as i32)
                     .clamp(0, (bounds.width() - window.width()).max(0));
-                let y = (window.margin(Edge::Top) + dy.round() as i32)
+                let y = (origin.get().1 + dy.round() as i32)
                     .clamp(0, (bounds.height() - window.height()).max(0));
                 window.set_margin(Edge::Left, x);
                 window.set_margin(Edge::Top, y);

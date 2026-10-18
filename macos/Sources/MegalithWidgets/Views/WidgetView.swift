@@ -74,8 +74,8 @@ private struct TabsBar: View {
                 }
                 .padding(.trailing, 8)
                 .frame(height: Layout.headerHeight)
-                .overlay { WindowDragHandle() }
-                .help("Drag to move and save a custom position.")
+                .overlay { WindowDragHandle(enabled: store.editingPosition) }
+                .help("Enable Set position in Settings to move the widget.")
 
                 ForEach(Filter.allCases, id: \.self) { filter in
                     let count = store.count(filter)
@@ -98,10 +98,10 @@ private struct TabsBar: View {
                     NSWorkspace.shared.open(GitHub.reviewQueue)
                 }
                 RefreshButton()
-                IconButton(icon: "gear", help: "Settings") { store.showingSettings.toggle() }
-                    .popover(isPresented: $store.showingSettings, arrowEdge: .bottom) {
-                        SettingsView().environmentObject(store)
-                    }
+                IconButton(icon: "gear", help: "Settings") {
+                    if !store.editingPosition { store.showingSettings.toggle() }
+                }
+                .background { SettingsPopover(store: store) }
             }
         }
     }

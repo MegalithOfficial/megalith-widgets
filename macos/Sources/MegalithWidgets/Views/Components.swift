@@ -2,18 +2,27 @@ import AppKit
 import SwiftUI
 
 struct WindowDragHandle: NSViewRepresentable {
+    var enabled: Bool
+
     func makeNSView(context: Context) -> NSView { DragView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let view = nsView as? DragView else { return }
+        view.enabled = enabled
+        view.window?.invalidateCursorRects(for: view)
+    }
 
     private final class DragView: NSView {
+        var enabled = false
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
         override func mouseDown(with event: NSEvent) {
-            (window as? WidgetPanel)?.drag(with: event)
+            if enabled { (window as? WidgetPanel)?.drag(with: event) }
         }
 
         override func resetCursorRects() {
-            addCursorRect(bounds, cursor: .openHand)
+            if enabled {
+                addCursorRect(bounds, cursor: .openHand)
+            }
         }
     }
 }

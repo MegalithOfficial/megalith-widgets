@@ -6,6 +6,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var store: Store
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var repositoryInput = ""
+    @State private var repositoryError: String?
 
     var body: some View {
         Themed { p in
@@ -30,21 +32,24 @@ struct SettingsView: View {
                     Toggle("", isOn: setting(\.automaticPlacement)).switchStyle(p)
                         .disabled(store.prefs.settings.corner == .custom)
                 }
-                SettingRow(title: "Position", hint: "Choose a corner or enter coordinates") {
+                SettingRow(title: "Position", hint: "Choose a corner or set a custom position") {
                     Segmented(options: Corner.allCases, selection: setting(\.corner)) { CornerGlyph(corner: $0) }
                 }
                 if store.prefs.settings.corner == .custom {
-                    SettingRow(title: "Coordinates", hint: "From the main work area's top-left") {
-                        HStack(spacing: 6) {
-                            Text("X")
-                            TextField("X", value: coordinate(\.customX), format: .number.grouping(.never))
-                                .frame(width: 55)
-                            Text("Y")
-                            TextField("Y", value: coordinate(\.customY), format: .number.grouping(.never))
-                                .frame(width: 55)
+                    HStack(spacing: 6) {
+                        Text(store.editingPosition ? "Drag Reviews, then save" : "Drag the Reviews title")
+                            .font(Fonts.ui(11.5))
+                            .foregroundStyle(p.faint)
+                        Spacer(minLength: 0)
+                        Button(positionButtonTitle) {
+                            if store.editingPosition { store.savePosition() }
+                            else { store.beginPositionEditing() }
                         }
-                        .textFieldStyle(.roundedBorder)
+                        Button("Reset") { store.resetPosition() }
+                            .disabled(!store.editingPosition && !store.prefs.settings.hasCustomPosition)
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                 }
                 if let notice = store.placementNotice {
                     Text(notice)
@@ -59,6 +64,21 @@ struct SettingsView: View {
 
                 sectionTitle("Repositories")
                 repositories(p)
+                HStack(spacing: 6) {
+                    TextField("owner/repo or GitHub URL", text: $repositoryInput)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit(addRepository)
+                    Button("Add", action: addRepository)
+                        .disabled(repositoryInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                if let repositoryError {
+                    Text(repositoryError)
+                        .font(Fonts.ui(11.5))
+                        .foregroundStyle(p.red)
+                        .padding(.horizontal, 10)
+                }
 
                 HStack {
                     Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")")
@@ -81,8 +101,13 @@ struct SettingsView: View {
             .frame(width: 360)
             .font(Fonts.ui(13))
             .foregroundStyle(p.text)
-            .presentationBackground(p.panel)
+            .background(p.panel)
         }
+    }
+
+    private var positionButtonTitle: String {
+        if store.editingPosition { return "Save position" }
+        return store.prefs.settings.hasCustomPosition ? "Re-set position" : "Set position"
     }
 
     private func sectionTitle(_ text: String) -> some View {
@@ -97,7 +122,7 @@ struct SettingsView: View {
     private func repositories(_ p: Palette) -> some View {
         let repos = store.repositories
         if repos.isEmpty {
-            Text("Repositories show up here once pull requests load.")
+            Text("No repositories added or found in your reviews.")
                 .font(Fonts.ui(11.5))
                 .foregroundStyle(p.faint)
                 .padding(.horizontal, 10)
@@ -135,15 +160,14 @@ struct SettingsView: View {
         )
     }
 
-    private func coordinate(_ keyPath: WritableKeyPath<Settings, Int>) -> Binding<Int> {
-        Binding(
-            get: { store.prefs.settings[keyPath: keyPath] },
-            set: { value in
-                store.updateSettings {
-                    $0[keyPath: keyPath] = min(max(value, Int(Int32.min)), Int(Int32.max))
-                }
-            }
-        )
+    private func addRepository() {
+        guard let repo = RepositoryName.normalize(repositoryInput) else {
+            repositoryError = "Enter owner/repo or a GitHub repository URL."
+            return
+        }
+        store.addRepository(repo)
+        repositoryInput = ""
+        repositoryError = nil
     }
 
     private func setOpenAtLogin(_ enabled: Bool) {

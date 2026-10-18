@@ -24,6 +24,9 @@ struct Settings: Codable, Equatable {
     var automaticPlacement = true
     var customX = 10
     var customY = 10
+    var customPositionSet: Bool? = false
+
+    var hasCustomPosition: Bool { customPositionSet ?? (corner == .custom) }
 
     enum CodingKeys: String, CodingKey {
         case notifications
@@ -32,6 +35,7 @@ struct Settings: Codable, Equatable {
         case automaticPlacement = "automatic_placement"
         case customX = "custom_x"
         case customY = "custom_y"
+        case customPositionSet = "custom_position_set"
         case appearance, corner
     }
 
@@ -49,6 +53,7 @@ struct Settings: Codable, Equatable {
         automaticPlacement = try container.decodeIfPresent(Bool.self, forKey: .automaticPlacement) ?? defaults.automaticPlacement
         customX = try container.decodeIfPresent(Int.self, forKey: .customX) ?? defaults.customX
         customY = try container.decodeIfPresent(Int.self, forKey: .customY) ?? defaults.customY
+        customPositionSet = try container.decodeIfPresent(Bool.self, forKey: .customPositionSet)
     }
 }
 
@@ -60,6 +65,12 @@ struct Prefs: Codable, Equatable {
     private(set) var ignored: Set<String> = []
     /// `owner/repo` names switched off in settings.
     private(set) var unwatched: Set<String> = []
+    private(set) var addedRepositories: Set<String> = []
+
+    enum CodingKeys: String, CodingKey {
+        case settings, pinned, ignored, unwatched
+        case addedRepositories = "added_repositories"
+    }
 
     init() {}
 
@@ -69,6 +80,7 @@ struct Prefs: Codable, Equatable {
         pinned = try container.decodeIfPresent(Set<String>.self, forKey: .pinned) ?? []
         ignored = try container.decodeIfPresent(Set<String>.self, forKey: .ignored) ?? []
         unwatched = try container.decodeIfPresent(Set<String>.self, forKey: .unwatched) ?? []
+        addedRepositories = try container.decodeIfPresent(Set<String>.self, forKey: .addedRepositories) ?? []
     }
 
     static var fileURL: URL {
@@ -116,7 +128,7 @@ struct Prefs: Codable, Equatable {
     }
 
     func isWatched(_ repo: String) -> Bool {
-        !unwatched.contains(repo)
+        !unwatched.contains { $0.caseInsensitiveCompare(repo) == .orderedSame }
     }
 
     mutating func setPinned(_ pr: PullRequest, _ pinned: Bool) {
@@ -138,9 +150,16 @@ struct Prefs: Codable, Equatable {
 
     mutating func setWatched(_ repo: String, _ watched: Bool) {
         if watched {
-            unwatched.remove(repo)
-        } else {
+            unwatched = unwatched.filter { $0.caseInsensitiveCompare(repo) != .orderedSame }
+        } else if isWatched(repo) {
             unwatched.insert(repo)
+        }
+    }
+
+    mutating func addRepository(_ repo: String) {
+        setWatched(repo, true)
+        if !addedRepositories.contains(where: { $0.caseInsensitiveCompare(repo) == .orderedSame }) {
+            addedRepositories.insert(repo)
         }
     }
 
@@ -151,7 +170,11 @@ struct Prefs: Codable, Equatable {
 
     /// Repositories seen in `prs` plus any switched off, sorted for display.
     func repositories(in prs: [PullRequest]) -> [String] {
-        Set(prs.map(\.repo)).union(unwatched).sorted { $0.lowercased() < $1.lowercased() }
+        var repos: [String: String] = [:]
+        for repo in Array(addedRepositories) + Array(unwatched) + prs.map(\.repo) {
+            repos[repo.lowercased()] = repo
+        }
+        return repos.sorted { $0.key < $1.key }.map(\.value)
     }
 
     /// Forgets pins for PRs that are gone. Ignores are kept, so a reopened

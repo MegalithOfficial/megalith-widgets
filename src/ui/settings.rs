@@ -96,6 +96,34 @@ pub fn popover(widget: &Rc<Widget>) -> gtk::Popover {
         .build();
     content.append(&repos_scroller);
 
+    let entry = gtk::Entry::builder()
+        .placeholder_text("owner/repo or GitHub URL")
+        .hexpand(true)
+        .build();
+    let add = gtk::Button::with_label("Add");
+    let add_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    add_row.add_css_class("settings-row");
+    add_row.append(&entry);
+    add_row.append(&add);
+    let error = label("", &["settings-hint", "red"]);
+    error.set_wrap(true);
+    error.set_visible(false);
+    content.append(&add_row);
+    content.append(&error);
+    add.connect_clicked({
+        let weak = weak.clone();
+        let entry = entry.clone();
+        let error = error.clone();
+        let repos = repos.clone();
+        move |_| add_repository(&weak, &entry, &error, &repos)
+    });
+    entry.connect_activate({
+        let weak = weak.clone();
+        let error = error.clone();
+        let repos = repos.clone();
+        move |entry| add_repository(&weak, entry, &error, &repos)
+    });
+
     let footer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     footer.add_css_class("settings-footer");
     let version = label(
@@ -117,43 +145,34 @@ pub fn popover(widget: &Rc<Widget>) -> gtk::Popover {
         .has_arrow(false)
         .build();
     popover.add_css_class("settings");
-    popover.connect_show(move |_| {
+    popover.connect_show(move |popover| {
         if let Some(widget) = weak.upgrade() {
             fill_repositories(&widget, &repos);
-            fill_placement(&widget, &placement);
+            fill_placement(&widget, &placement, popover);
         }
     });
     popover
 }
 
-fn fill_placement(widget: &Rc<Widget>, container: &gtk::Box) {
+fn add_repository(weak: &Weak<Widget>, entry: &gtk::Entry, error: &gtk::Label, list: &gtk::Box) {
+    let Some(widget) = weak.upgrade() else { return };
+    let Some(repo) = crate::repository::normalize(&entry.text()) else {
+        error.set_label("Enter owner/repo or a GitHub repository URL.");
+        error.set_visible(true);
+        return;
+    };
+    widget.update_prefs(None, |prefs| prefs.add_repository(repo));
+    entry.set_text("");
+    error.set_visible(false);
+    fill_repositories(&widget, list);
+}
+
+fn fill_placement(widget: &Rc<Widget>, container: &gtk::Box, popover: &gtk::Popover) {
     while let Some(child) = container.first_child() {
         container.remove(&child);
     }
     let settings = widget.settings();
     let weak = Rc::downgrade(widget);
-    let coordinates = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    coordinates.set_visible(settings.corner == Corner::Custom);
-    for (axis, value) in [("X", settings.custom_x), ("Y", settings.custom_y)] {
-        coordinates.append(&label(axis, &[]));
-        let input = gtk::SpinButton::with_range(f64::from(i32::MIN), f64::from(i32::MAX), 1.0);
-        input.set_value(f64::from(value));
-        input.set_width_chars(5);
-        input.set_tooltip_text(Some("Logical pixels from the main work area's top-left"));
-        let weak = weak.clone();
-        input.connect_value_changed(move |input| {
-            if let Some(widget) = weak.upgrade() {
-                widget.update_settings(|settings| {
-                    if axis == "X" {
-                        settings.custom_x = input.value_as_int();
-                    } else {
-                        settings.custom_y = input.value_as_int();
-                    }
-                });
-            }
-        });
-        coordinates.append(&input);
-    }
     let choices = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     choices.add_css_class("segmented");
     let mut first: Option<gtk::ToggleButton> = None;
@@ -175,19 +194,96 @@ fn fill_placement(widget: &Rc<Widget>, container: &gtk::Box) {
             first = Some(button.clone());
         }
         let weak = weak.clone();
-        let coordinates = coordinates.clone();
+        let container = container.downgrade();
+        let popover = popover.downgrade();
         button.connect_toggled(move |button| {
-            if button.is_active() {
-                coordinates.set_visible(corner == Corner::Custom);
-                if let Some(widget) = weak.upgrade() {
-                    widget.update_settings(|settings| settings.corner = corner);
-                }
+            if button.is_active()
+                && let Some(widget) = weak.upgrade()
+                && let Some(container) = container.upgrade()
+                && let Some(popover) = popover.upgrade()
+            {
+                widget.set_position_editing(false);
+                widget.update_settings(|settings| {
+                    settings.custom_position_set = Some(settings.has_custom_position());
+                    settings.corner = corner;
+                });
+                fill_placement(&widget, &container, &popover);
             }
         });
         choices.append(&button);
     }
-    container.append(&row("Position", "Corner or custom coordinates", &choices));
-    container.append(&coordinates);
+    container.append(&row(
+        "Position",
+        "Choose a corner or set a custom position",
+        &choices,
+    ));
+    let editing = widget.editing_position();
+    if settings.corner == Corner::Custom {
+        let controls = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        controls.add_css_class("settings-row");
+        let hint = label(
+            if editing {
+                "Drag Reviews, then save"
+            } else {
+                "Drag the Reviews title"
+            },
+            &["settings-hint"],
+        );
+        hint.set_hexpand(true);
+        controls.append(&hint);
+        let title = if editing {
+            "Save position"
+        } else if settings.has_custom_position() {
+            "Re-set position"
+        } else {
+            "Set position"
+        };
+        let set = gtk::Button::with_label(title);
+        set.connect_clicked({
+            let weak = Rc::downgrade(widget);
+            let container = container.downgrade();
+            let popover = popover.downgrade();
+            move |_| {
+                if let (Some(widget), Some(container), Some(popover)) =
+                    (weak.upgrade(), container.upgrade(), popover.upgrade())
+                {
+                    if widget.editing_position() {
+                        widget.save_position();
+                    } else {
+                        widget.set_position_editing(true);
+                    }
+                    fill_placement(&widget, &container, &popover);
+                }
+            }
+        });
+        let reset = gtk::Button::with_label("Reset");
+        reset.set_sensitive(editing || settings.has_custom_position());
+        reset.connect_clicked({
+            let weak = Rc::downgrade(widget);
+            let container = container.downgrade();
+            let popover = popover.downgrade();
+            move |_| {
+                if let (Some(widget), Some(container), Some(popover)) =
+                    (weak.upgrade(), container.upgrade(), popover.upgrade())
+                {
+                    widget.reset_position();
+                    fill_placement(&widget, &container, &popover);
+                }
+            }
+        });
+        controls.append(&set);
+        controls.append(&reset);
+        container.append(&controls);
+    }
+    // GTK recreates the popup surface when autohide changes.
+    if popover.is_autohide() == editing {
+        let visible = popover.is_visible();
+        popover.popdown();
+        popover.set_autohide(!editing);
+        if visible {
+            popover.popup();
+        }
+    }
 }
 
 fn fill_repositories(widget: &Rc<Widget>, container: &gtk::Box) {
@@ -198,7 +294,7 @@ fn fill_repositories(widget: &Rc<Widget>, container: &gtk::Box) {
     let repos = widget.prefs.borrow().repositories(&widget.prs.borrow());
     if repos.is_empty() {
         let hint = label(
-            "Repositories show up here once pull requests load.",
+            "No repositories added or found in your reviews.",
             &["settings-hint"],
         );
         hint.set_margin_start(10);

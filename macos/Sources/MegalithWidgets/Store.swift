@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import UserNotifications
 
@@ -62,6 +63,9 @@ final class Store: ObservableObject {
     @Published var searching = false
     @Published var showingSettings = false
     @Published var placementNotice: String?
+    @Published private(set) var editingPosition = false
+    let positionReset = PassthroughSubject<Void, Never>()
+    private var positionDraft: (x: Int, y: Int)?
 
     private static let tickInterval: TimeInterval = 15
     /// How long merged/closed PRs linger in the Closed tab.
@@ -255,8 +259,53 @@ final class Store: ObservableObject {
         updatePrefs { $0.unignoreAll() }
     }
 
+    func addRepository(_ repo: String) {
+        updatePrefs { $0.addRepository(repo) }
+    }
+
     func updateSettings(_ change: (inout Settings) -> Void) {
-        updatePrefs { change(&$0.settings) }
+        var settings = prefs.settings
+        change(&settings)
+        if settings.corner != prefs.settings.corner {
+            positionDraft = nil
+            editingPosition = false
+            settings.customPositionSet = prefs.settings.hasCustomPosition
+        }
+        updatePrefs { $0.settings = settings }
+    }
+
+    func beginPositionEditing() {
+        guard !editingPosition, prefs.settings.corner == .custom else { return }
+        positionDraft = (prefs.settings.customX, prefs.settings.customY)
+        editingPosition = true
+    }
+
+    func previewPosition(x: Int, y: Int) {
+        guard positionDraft != nil else { return }
+        positionDraft = (x, y)
+    }
+
+    func savePosition() {
+        guard let draft = positionDraft else { return }
+        positionDraft = nil
+        editingPosition = false
+        updateSettings {
+            $0.corner = .custom
+            $0.customX = draft.x
+            $0.customY = draft.y
+            $0.customPositionSet = true
+        }
+    }
+
+    func resetPosition() {
+        positionDraft = nil
+        editingPosition = false
+        updateSettings {
+            $0.customX = 10
+            $0.customY = 10
+            $0.customPositionSet = false
+        }
+        positionReset.send()
     }
 
     func undo() {
