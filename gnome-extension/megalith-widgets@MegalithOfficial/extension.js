@@ -1,21 +1,15 @@
-// GNOME doesn't let Wayland clients position themselves or sit on the
-// desktop, so this extension launches the widget itself. Windows created by a
-// process the shell spawned can be identified, turned into desktop windows
-// (below everything, out of the dock, Alt+Tab and the overview), stuck to
-// every workspace and parked in the top-left corner.
+// Launch the widget through Mutter so its window can join the desktop layer.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {resolvePosition} from './position.js';
 
 const BINARY = 'megalith-widgets';
-// Distance from the work area's corner. The widget draws its own 14px
-// shadow margin, so the visible gap is a little larger.
-const MARGIN = 10;
 const RELAUNCH_DELAY_SECONDS = 3;
-// Mutter places a freshly mapped window itself; move it after that settles.
+// Wait for Mutter's initial placement before moving the window.
 const PLACE_DELAY_MS = 250;
 
 export default class MegalithWidgets extends Extension {
@@ -23,12 +17,18 @@ export default class MegalithWidgets extends Extension {
         this._window = null;
         this._signals = [];
         this._timeouts = new Set();
+        this._actions = null;
+        this._actionSignals = [];
 
         this._connect(global.window_manager, 'map', (_wm, actor) => {
             this._onMapped(actor.get_meta_window());
         }, true);
         this._connect(Main.layoutManager, 'monitors-changed', () => this._place());
         this._connect(global.display, 'workareas-changed', () => this._place());
+        this._connect(global.display, 'grab-op-end', (_display, window) => {
+            if (window === this._window)
+                this._savePosition();
+        });
 
         this._launch();
     }
@@ -78,13 +78,22 @@ export default class MegalithWidgets extends Extension {
             launcher.close();
         }
 
-        const subprocess = this._client.get_subprocess();
+        const client = this._client;
+        const subprocess = client.get_subprocess();
         this._cancellable = new Gio.Cancellable();
-        subprocess.wait_async(this._cancellable, () => {
+        subprocess.wait_async(this._cancellable, (process, result) => {
+            try {
+                process.wait_finish(result);
+            } catch (error) {
+                if (!error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                    console.error(`[megalith-widgets] ${error.message}`);
+                return;
+            }
+            if (this._client !== client)
+                return;
             this._client = null;
             this._release();
-            // Quitting from the widget's menu exits cleanly; respect that
-            // until the next login. Anything else is a crash, so restart.
+            // Restart after crashes; leave intentional exits alone.
             if (subprocess.get_if_exited() && subprocess.get_exit_status() === 0)
                 return;
             this._later(RELAUNCH_DELAY_SECONDS * 1000, () => this._launch());
@@ -96,7 +105,7 @@ export default class MegalithWidgets extends Extension {
             this._adopt(window);
             return;
         }
-        // Another desktop window (e.g. Desktop Icons NG) would cover ours.
+        // Stay above desktop icon extensions.
         if (this._window && window.get_window_type() === Meta.WindowType.DESKTOP)
             this._later(0, () => this._window?.raise());
     }
@@ -104,6 +113,21 @@ export default class MegalithWidgets extends Extension {
     _adopt(window) {
         this._release();
         this._window = window;
+        const busName = window.get_gtk_unique_bus_name();
+        const objectPath = window.get_gtk_application_object_path();
+        if (busName && objectPath) {
+            this._actions = Gio.DBusActionGroup.get(Gio.DBus.session, busName, objectPath);
+            this._actionSignals = [
+                this._actions.connect('action-added', (_group, name) => {
+                    if (name === 'placement')
+                        this._place();
+                }),
+                this._actions.connect('action-state-changed', (_group, name) => {
+                    if (name === 'placement')
+                        this._place();
+                }),
+            ];
+        }
         this._windowSignals = [
             window.connect('size-changed', () => this._place()),
             window.connect('unmanaged', () => this._release()),
@@ -116,6 +140,10 @@ export default class MegalithWidgets extends Extension {
     }
 
     _release() {
+        for (const id of this._actionSignals ?? [])
+            this._actions.disconnect(id);
+        this._actions = null;
+        this._actionSignals = [];
         for (const id of this._windowSignals ?? [])
             this._window?.disconnect(id);
         this._windowSignals = [];
@@ -126,7 +154,18 @@ export default class MegalithWidgets extends Extension {
         const window = this._window;
         if (!window)
             return;
-        const area = window.get_work_area_for_monitor(Main.layoutManager.primaryIndex);
-        window.move_frame(false, area.x + MARGIN, area.y + MARGIN);
+        const areas = Main.layoutManager.monitors.map((_monitor, index) => window.get_work_area_for_monitor(index));
+        const state = this._actions?.get_action_state('placement')?.deep_unpack() ?? ['top-left', 10, 10];
+        const position = resolvePosition(state, window.get_frame_rect(), areas, Main.layoutManager.primaryIndex);
+        if (position)
+            window.move_frame(false, position.x, position.y);
+    }
+
+    _savePosition() {
+        if (!this._actions?.has_action('placement'))
+            return;
+        const area = this._window.get_work_area_for_monitor(Main.layoutManager.primaryIndex);
+        const frame = this._window.get_frame_rect();
+        this._actions.activate_action('placement', new GLib.Variant('(sii)', ['custom', frame.x - area.x, frame.y - area.y]));
     }
 }

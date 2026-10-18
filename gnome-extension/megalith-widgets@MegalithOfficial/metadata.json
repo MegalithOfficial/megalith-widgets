@@ -1,7 +1,7 @@
 {
   "uuid": "megalith-widgets@MegalithOfficial",
   "name": "Megalith Widgets",
-  "description": "Pins Megalith Widgets to the desktop: top-left corner, every workspace, kept out of the dock and Alt+Tab.",
+  "description": "GitHub pull request reviews on the desktop, across workspaces and outside the dock and Alt+Tab.",
   "shell-version": [
     "49",
     "50",

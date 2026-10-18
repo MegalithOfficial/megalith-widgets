@@ -6,5 +6,6 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(name: "MegalithWidgets", path: "Sources/MegalithWidgets"),
+        .testTarget(name: "MegalithWidgetsTests", dependencies: ["MegalithWidgets"]),
     ]
 )

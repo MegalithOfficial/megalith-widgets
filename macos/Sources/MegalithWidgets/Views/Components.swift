@@ -1,4 +1,22 @@
+import AppKit
 import SwiftUI
+
+struct WindowDragHandle: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragView: NSView {
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+        override func mouseDown(with event: NSEvent) {
+            (window as? WidgetPanel)?.drag(with: event)
+        }
+
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: .openHand)
+        }
+    }
+}
 
 /// Every view reads its colors through this so light/dark switch together.
 struct Themed<Content: View>: View {

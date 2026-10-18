@@ -38,19 +38,20 @@ To uninstall, run `./install.sh --uninstall`. Your settings are preserved.
 
 ### Desktop integration
 
-On **GNOME Wayland**, the bundled shell extension launches the widget, places it
-in the top-left corner on every workspace and keeps it out of the dock, Alt+Tab
-and overview. The extension supports GNOME Shell 50 and 51. If it isn't detected
+On **GNOME Wayland**, the bundled shell extension launches the widget on every
+workspace and keeps it out of the dock, Alt+Tab and overview. The extension
+supports GNOME Shell 49, 50 and 51. If it isn't detected
 after installation, log out and back in, then enable it:
 
 ```sh
 gnome-extensions enable megalith-widgets@MegalithOfficial
 ```
 
-On **Wayland compositors with layer-shell support**, the widget anchors to the
-top-right corner below other windows. Set `MEGALITH_WIDGETS_CORNER` in its launch
-environment to `top-left`, `top-right`, `bottom-left` or `bottom-right` to change
-the position. Other environments use a draggable, borderless window.
+On **Wayland compositors with layer-shell support**, the widget sits below other
+windows. Both integrations support the corner and Custom position settings.
+`MEGALITH_WIDGETS_CORNER` sets the initial corner before a position is saved.
+Other environments use a borderless window with native window dragging;
+restoring coordinates requires GNOME or layer-shell support.
 
 Outside GNOME, the installer adds an autostart entry. Run
 `~/.local/bin/megalith-widgets` to start it immediately after installation.
@@ -80,7 +81,13 @@ and opens it. Run `./build.sh` without `--install` to build the app bundle only.
 
 The widget sits on the desktop, above the wallpaper and below other windows, on
 every Space. It has no Dock icon; the menu bar icon offers refresh, settings and
-quit. Its settings also include the screen corner and opening at login.
+quit. **Avoid desktop widgets** looks for free space near the selected corner using
+desktop window bounds. It runs at launch and when the corner, display layout or
+Space changes; use **Find Free Space** in the menu bar to run it again after
+moving other widgets.
+
+Custom positions remain fixed. Widget avoidance and opening at login can be
+enabled in settings.
 
 The build script signs the app ad hoc for local use; it does not notarize it.
 
@@ -89,6 +96,11 @@ The build script signs the app ad hoc for local use; it does not notarize it.
 Both apps refresh every two minutes by default. Settings include the refresh
 interval, desktop notifications, draft visibility, repository filters and
 system, light or dark appearance.
+
+Choose one of the four corners in **Position**, or select **Custom** to enter X/Y
+coordinates. On GNOME, layer-shell desktops and macOS, dragging the **Reviews**
+title selects Custom and saves the coordinates to `prefs.json`. Coordinates are
+logical pixels from the top-left of the main display's usable area.
 
 Preferences use the same JSON format on both platforms and are stored locally:
 

@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/dev/megalith/MegalithWidgets">
+    <file>icons/LICENSE</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-up-left-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-up-right-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-down-left-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/arrow-down-right-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/crosshairs-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/alert-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/check-circle-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/check-symbolic.svg</file>

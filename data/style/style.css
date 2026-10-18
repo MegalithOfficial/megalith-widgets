@@ -13,7 +13,7 @@ window.megalith-widgets.background {
   border-radius: 20px;
   background-color: alpha(@w_bg, 0.86);
   border: 1px solid alpha(@w_text, 0.09);
-  box-shadow: 0 8px 26px @w_shadow;
+  box-shadow: none;
   color: @w_text;
   font-family: "IBM Plex Sans", sans-serif;
   font-size: 13px;

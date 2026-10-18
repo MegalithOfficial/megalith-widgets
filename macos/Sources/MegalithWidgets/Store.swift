@@ -61,6 +61,7 @@ final class Store: ObservableObject {
     @Published var query = ""
     @Published var searching = false
     @Published var showingSettings = false
+    @Published var placementNotice: String?
 
     private static let tickInterval: TimeInterval = 15
     /// How long merged/closed PRs linger in the Closed tab.

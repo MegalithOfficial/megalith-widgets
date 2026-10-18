@@ -2,8 +2,7 @@ import AppKit
 import ServiceManagement
 import SwiftUI
 
-/// The gear popover: same options as the Linux app, plus screen corner and
-/// open at login.
+/// Preferences and macOS desktop integration.
 struct SettingsView: View {
     @EnvironmentObject private var store: Store
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
@@ -22,13 +21,37 @@ struct SettingsView: View {
                 SettingRow(title: "Refresh every", hint: "How often GitHub is checked") {
                     Segmented(options: [1, 2, 5, 15], selection: setting(\.refreshMinutes)) { Text("\($0)m") }
                 }
-                SettingRow(title: "Appearance", hint: "Follows Zed's light and dark themes") {
+                SettingRow(title: "Appearance", hint: "System, dark or light theme") {
                     Segmented(options: Appearance.allCases, selection: setting(\.appearance)) {
                         Text($0.rawValue.capitalized)
                     }
                 }
-                SettingRow(title: "Position", hint: "Screen corner the widget sits in") {
+                SettingRow(title: "Avoid desktop widgets", hint: "Find free space near the selected corner") {
+                    Toggle("", isOn: setting(\.automaticPlacement)).switchStyle(p)
+                        .disabled(store.prefs.settings.corner == .custom)
+                }
+                SettingRow(title: "Position", hint: "Choose a corner or enter coordinates") {
                     Segmented(options: Corner.allCases, selection: setting(\.corner)) { CornerGlyph(corner: $0) }
+                }
+                if store.prefs.settings.corner == .custom {
+                    SettingRow(title: "Coordinates", hint: "From the main work area's top-left") {
+                        HStack(spacing: 6) {
+                            Text("X")
+                            TextField("X", value: coordinate(\.customX), format: .number.grouping(.never))
+                                .frame(width: 55)
+                            Text("Y")
+                            TextField("Y", value: coordinate(\.customY), format: .number.grouping(.never))
+                                .frame(width: 55)
+                        }
+                        .textFieldStyle(.roundedBorder)
+                    }
+                }
+                if let notice = store.placementNotice {
+                    Text(notice)
+                        .font(Fonts.ui(11.5))
+                        .foregroundStyle(p.muted)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
                 }
                 SettingRow(title: "Open at login", hint: "Start the widget when you log in") {
                     Toggle("", isOn: Binding(get: { openAtLogin }, set: setOpenAtLogin)).switchStyle(p)
@@ -112,6 +135,17 @@ struct SettingsView: View {
         )
     }
 
+    private func coordinate(_ keyPath: WritableKeyPath<Settings, Int>) -> Binding<Int> {
+        Binding(
+            get: { store.prefs.settings[keyPath: keyPath] },
+            set: { value in
+                store.updateSettings {
+                    $0[keyPath: keyPath] = min(max(value, Int(Int32.min)), Int(Int32.max))
+                }
+            }
+        )
+    }
+
     private func setOpenAtLogin(_ enabled: Bool) {
         do {
             if enabled {
@@ -147,23 +181,25 @@ private struct SettingRow<Control: View>: View {
     }
 }
 
-/// A tiny screen with a dot in the chosen corner.
 private struct CornerGlyph: View {
     let corner: Corner
 
     var body: some View {
-        let alignment: Alignment = switch corner {
-        case .topLeft: .topLeading
-        case .topRight: .topTrailing
-        case .bottomLeft: .bottomLeading
-        case .bottomRight: .bottomTrailing
+        let (icon, title): (String, String) = switch corner {
+        case .topLeft: ("arrow-up-left", "Top left")
+        case .topRight: ("arrow-up-right", "Top right")
+        case .bottomLeft: ("arrow-down-left", "Bottom left")
+        case .bottomRight: ("arrow-down-right", "Bottom right")
+        case .custom: ("crosshairs", "Custom")
         }
-        RoundedRectangle(cornerRadius: 2)
-            .strokeBorder(lineWidth: 1)
-            .frame(width: 16, height: 11)
-            .overlay(alignment: alignment) {
-                RoundedRectangle(cornerRadius: 1).frame(width: 5, height: 4).padding(2)
+        HStack(spacing: 5) {
+            Icon(icon)
+            if corner == .custom {
+                Text("Custom")
             }
+        }
+        .accessibilityLabel(title)
+        .help(title)
     }
 }
 

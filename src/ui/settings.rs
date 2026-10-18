@@ -1,8 +1,8 @@
 //! The settings popover behind the gear button.
 
 use super::Widget;
-use super::row::label;
-use crate::prefs::{Appearance, Settings};
+use super::row::{image, label};
+use crate::prefs::{Appearance, Corner, Settings};
 use adw::prelude::*;
 use std::rc::{Rc, Weak};
 
@@ -11,6 +11,21 @@ const APPEARANCE_CHOICES: [(Appearance, &str); 3] = [
     (Appearance::System, "System"),
     (Appearance::Dark, "Dark"),
     (Appearance::Light, "Light"),
+];
+const POSITION_CHOICES: [(Corner, &str, &str); 5] = [
+    (Corner::TopLeft, "Top left", "arrow-up-left-symbolic"),
+    (Corner::TopRight, "Top right", "arrow-up-right-symbolic"),
+    (
+        Corner::BottomLeft,
+        "Bottom left",
+        "arrow-down-left-symbolic",
+    ),
+    (
+        Corner::BottomRight,
+        "Bottom right",
+        "arrow-down-right-symbolic",
+    ),
+    (Corner::Custom, "Custom", "crosshairs-symbolic"),
 ];
 
 pub fn apply_appearance(appearance: Appearance) {
@@ -55,7 +70,7 @@ pub fn popover(widget: &Rc<Widget>) -> gtk::Popover {
     ));
     content.append(&row(
         "Appearance",
-        "Follows Zed's light and dark themes",
+        "System, dark or light theme",
         &segmented(
             &weak,
             &APPEARANCE_CHOICES,
@@ -66,6 +81,9 @@ pub fn popover(widget: &Rc<Widget>) -> gtk::Popover {
             },
         ),
     ));
+
+    let placement = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    content.append(&placement);
 
     // Filled each time the popover opens, since repositories come and go.
     content.append(&section_title("Repositories"));
@@ -102,9 +120,74 @@ pub fn popover(widget: &Rc<Widget>) -> gtk::Popover {
     popover.connect_show(move |_| {
         if let Some(widget) = weak.upgrade() {
             fill_repositories(&widget, &repos);
+            fill_placement(&widget, &placement);
         }
     });
     popover
+}
+
+fn fill_placement(widget: &Rc<Widget>, container: &gtk::Box) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
+    let settings = widget.settings();
+    let weak = Rc::downgrade(widget);
+    let coordinates = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    coordinates.set_visible(settings.corner == Corner::Custom);
+    for (axis, value) in [("X", settings.custom_x), ("Y", settings.custom_y)] {
+        coordinates.append(&label(axis, &[]));
+        let input = gtk::SpinButton::with_range(f64::from(i32::MIN), f64::from(i32::MAX), 1.0);
+        input.set_value(f64::from(value));
+        input.set_width_chars(5);
+        input.set_tooltip_text(Some("Logical pixels from the main work area's top-left"));
+        let weak = weak.clone();
+        input.connect_value_changed(move |input| {
+            if let Some(widget) = weak.upgrade() {
+                widget.update_settings(|settings| {
+                    if axis == "X" {
+                        settings.custom_x = input.value_as_int();
+                    } else {
+                        settings.custom_y = input.value_as_int();
+                    }
+                });
+            }
+        });
+        coordinates.append(&input);
+    }
+    let choices = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    choices.add_css_class("segmented");
+    let mut first: Option<gtk::ToggleButton> = None;
+    for (corner, title, icon) in POSITION_CHOICES {
+        let content = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        content.append(&image(icon, 14, &[]));
+        if corner == Corner::Custom {
+            content.append(&label("Custom", &[]));
+        }
+        let button = gtk::ToggleButton::builder()
+            .child(&content)
+            .tooltip_text(title)
+            .active(corner == settings.corner)
+            .build();
+        button.update_property(&[gtk::accessible::Property::Label(title)]);
+        if let Some(first) = &first {
+            button.set_group(Some(first));
+        } else {
+            first = Some(button.clone());
+        }
+        let weak = weak.clone();
+        let coordinates = coordinates.clone();
+        button.connect_toggled(move |button| {
+            if button.is_active() {
+                coordinates.set_visible(corner == Corner::Custom);
+                if let Some(widget) = weak.upgrade() {
+                    widget.update_settings(|settings| settings.corner = corner);
+                }
+            }
+        });
+        choices.append(&button);
+    }
+    container.append(&row("Position", "Corner or custom coordinates", &choices));
+    container.append(&coordinates);
 }
 
 fn fill_repositories(widget: &Rc<Widget>, container: &gtk::Box) {

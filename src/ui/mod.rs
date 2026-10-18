@@ -9,7 +9,7 @@ mod style;
 pub use style::load as load_style;
 
 use crate::github::{Pr, Status};
-use crate::prefs::{Prefs, Settings};
+use crate::prefs::{Corner, Prefs, Settings};
 use adw::prelude::*;
 use gtk::{gio, glib, pango};
 use row::{Avatars, Columns, Row, image, label};
@@ -184,8 +184,15 @@ impl Widget {
 
         let glyph = image("git-pull-request-symbolic", 14, &["glyph"]);
         glyph.set_margin_end(6);
-        header.append(&glyph);
-        header.append(&label("Reviews", &["widget-title"]));
+        let title = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        title.append(&glyph);
+        title.append(&label("Reviews", &["widget-title"]));
+        let move_handle = gtk::WindowHandle::builder()
+            .child(&title)
+            .tooltip_text("Drag to move and save a custom position")
+            .build();
+        move_handle.set_cursor_from_name(Some("grab"));
+        header.append(&move_handle);
 
         let tabs: Vec<Tab> = Filter::TABS
             .into_iter()
@@ -309,8 +316,7 @@ impl Widget {
         card.append(&header);
         card.append(&body);
 
-        // Dragging the card moves the window where the compositor allows it.
-        window.set_child(Some(&gtk::WindowHandle::builder().child(&card).build()));
+        window.set_child(Some(&card));
 
         let rows: Rc<RefCell<Vec<Row>>> = Default::default();
         list.connect_row_activated({
@@ -380,6 +386,7 @@ impl Widget {
         menu::install_actions(&widget);
         menu::attach(&widget);
         settings_button.set_popover(Some(&settings::popover(&widget)));
+        crate::desktop::attach_drag(&widget.window, &move_handle);
 
         for tab in &widget.tabs {
             let weak: Weak<Self> = Rc::downgrade(&widget);
@@ -460,6 +467,7 @@ impl Widget {
             return;
         }
         self.prefs.borrow().save();
+        crate::desktop::sync_position(&self.window, &self.settings());
         self.refresh_view();
 
         if let Some(toast) = toast {
@@ -476,12 +484,21 @@ impl Widget {
         self.prefs.borrow().settings
     }
 
+    pub fn set_position(&self, corner: Corner, x: i32, y: i32) {
+        self.update_prefs(None, |prefs| {
+            prefs.settings.corner = corner;
+            prefs.settings.custom_x = x;
+            prefs.settings.custom_y = y;
+        });
+    }
+
     fn undo(&self) {
         let Some(before) = self.undo_state.take() else {
             return;
         };
         self.prefs.replace(before);
         self.prefs.borrow().save();
+        crate::desktop::sync_position(&self.window, &self.settings());
         self.refresh_view();
         self.toast.set_reveal_child(false);
     }

@@ -68,8 +68,14 @@ private struct TabsBar: View {
     var body: some View {
         Themed { p in
             HStack(spacing: 2) {
-                Icon("git-pull-request").foregroundStyle(p.muted).padding(.trailing, 6)
-                Text("Reviews").font(Fonts.ui(13, .semibold)).padding(.trailing, 8)
+                HStack(spacing: 6) {
+                    Icon("git-pull-request").foregroundStyle(p.muted)
+                    Text("Reviews").font(Fonts.ui(13, .semibold))
+                }
+                .padding(.trailing, 8)
+                .frame(height: Layout.headerHeight)
+                .overlay { WindowDragHandle() }
+                .help("Drag to move and save a custom position.")
 
                 ForEach(Filter.allCases, id: \.self) { filter in
                     let count = store.count(filter)

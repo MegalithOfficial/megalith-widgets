@@ -27,17 +27,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notifications.register()
 
         panel = WidgetPanel(root: WidgetView().environmentObject(store))
+        panel.onManualMove = { [weak self] in
+            guard let self, let screen = NSScreen.screens.first else { return }
+            store.placementNotice = nil
+            let frame = panel.frame
+            store.updateSettings {
+                $0.corner = .custom
+                $0.customX = Int((frame.minX - screen.visibleFrame.minX).rounded())
+                $0.customY = Int((screen.visibleFrame.maxY - frame.maxY).rounded())
+            }
+        }
         setUpStatusItem()
         observe()
-        place(store.prefs.settings.corner)
+        place(store.prefs.settings)
         panel.orderFrontRegardless()
         store.start()
     }
 
     private func observe() {
         // @Published emits before the value is stored, so use what it sends.
-        store.$prefs.map(\.settings.corner).removeDuplicates()
-            .sink { [weak self] corner in self?.place(corner) }
+        store.$prefs.map(\.settings).removeDuplicates(by: {
+            $0.corner == $1.corner && $0.automaticPlacement == $1.automaticPlacement
+                && $0.customX == $1.customX && $0.customY == $1.customY
+        }).dropFirst()
+            .sink { [weak self] settings in
+                self?.place(settings)
+            }
             .store(in: &subscriptions)
 
         store.$prefs.map(\.settings.appearance).removeDuplicates()
@@ -58,24 +73,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in
                 guard let self else { return }
-                place(store.prefs.settings.corner)
+                place(store.prefs.settings)
+            }
+            .store(in: &subscriptions)
+
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
+            .sink { [weak self] _ in
+                guard let self, store.prefs.settings.corner != .custom else { return }
+                place(store.prefs.settings)
             }
             .store(in: &subscriptions)
     }
 
-    /// Parks the panel in a corner of the main display's usable area.
-    private func place(_ corner: Corner) {
+    private func place(_ settings: Settings) {
         guard let screen = NSScreen.screens.first else { return }
-        let area = screen.visibleFrame
         let size = panel.frame.size
-        let margin: CGFloat = 10
-
-        let left = corner == .topLeft || corner == .bottomLeft
-        let top = corner == .topLeft || corner == .topRight
-        panel.setFrameOrigin(NSPoint(
-            x: left ? area.minX + margin : area.maxX - size.width - margin,
-            y: top ? area.maxY - size.height - margin : area.minY + margin
-        ))
+        store.placementNotice = nil
+        if settings.corner == .custom {
+            let origin = CGPoint(
+                x: screen.visibleFrame.minX + CGFloat(settings.customX),
+                y: screen.visibleFrame.maxY - size.height - CGFloat(settings.customY)
+            )
+            let frame = CGRect(origin: origin, size: size)
+            let target = NSScreen.screens.max(by: {
+                let a = $0.frame.intersection(frame)
+                let b = $1.frame.intersection(frame)
+                return a.width * a.height < b.width * b.height
+            }) ?? screen
+            panel.setFrameOrigin(WindowPlacement.clamped(origin, size: size, in: target.visibleFrame))
+            return
+        }
+        let fallback = WindowPlacement.cornerOrigin(size: size, in: screen.visibleFrame, corner: settings.corner)
+        guard settings.automaticPlacement else {
+            panel.setFrameOrigin(fallback)
+            return
+        }
+        guard let obstacles = DesktopWindows.obstacles(on: screen) else {
+            store.placementNotice = "Desktop window positions are unavailable. Drag Reviews to place the widget."
+            panel.setFrameOrigin(fallback)
+            return
+        }
+        if let origin = WindowPlacement.origin(size: size, in: screen.visibleFrame, corner: settings.corner, avoiding: obstacles) {
+            store.placementNotice = nil
+            panel.setFrameOrigin(origin)
+        } else {
+            store.placementNotice = "No clear area found. Drag Reviews to place the widget."
+            panel.setFrameOrigin(fallback)
+        }
     }
 
     // MARK: Menu bar
@@ -91,6 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(item("Refresh", key: "r", action: #selector(refresh)))
         menu.addItem(item("Open Review Queue", action: #selector(openQueue)))
         menu.addItem(item("Settings…", key: ",", action: #selector(openSettings)))
+        menu.addItem(item("Find Free Space", action: #selector(findFreeSpace)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Megalith Widgets", key: "q", action: #selector(NSApplication.terminate(_:)), target: NSApp))
         statusItem.menu = menu
@@ -114,11 +159,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.makeKey()
         store.showingSettings = true
     }
+
+    @objc private func findFreeSpace() {
+        if store.prefs.settings.automaticPlacement && store.prefs.settings.corner != .custom {
+            place(store.prefs.settings)
+        } else {
+            store.updateSettings {
+                $0.automaticPlacement = true
+                if $0.corner == .custom { $0.corner = .topLeft }
+            }
+        }
+    }
 }
 
 /// A borderless panel on the desktop layer: above the wallpaper and desktop
 /// icons, below every app window, on every Space.
 final class WidgetPanel: NSPanel {
+    var onManualMove: (() -> Void)?
+
     init<Root: View>(root: Root) {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
@@ -132,13 +190,20 @@ final class WidgetPanel: NSPanel {
         hasShadow = false
         level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
-        isMovable = false
+        isMovable = true
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
 
         let host = NSHostingView(rootView: root)
         contentView = host
         setContentSize(host.fittingSize)
+    }
+
+    func drag(with event: NSEvent) {
+        let original = frame.origin
+        performDrag(with: event)
+        guard frame.origin != original else { return }
+        onManualMove?()
     }
 
     // Borderless panels refuse key status by default, which would block typing.

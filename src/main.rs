@@ -78,6 +78,24 @@ fn activate(app: &adw::Application) {
         move |_| with(&widget, Widget::refresh)
     });
 
+    let placement = gio::SimpleAction::new_stateful(
+        "placement",
+        Some(glib::VariantTy::new("(sii)").expect("placement has a valid type")),
+        &desktop::placement_state(&widget.view.settings()),
+    );
+    placement.connect_activate({
+        let widget = Rc::downgrade(&widget);
+        move |_, parameter| {
+            if let Some((corner, x, y)) =
+                parameter.and_then(|value| value.get::<(String, i32, i32)>())
+                && let Some(corner) = prefs::Corner::parse(&corner)
+            {
+                with(&widget, |widget| widget.view.set_position(corner, x, y));
+            }
+        }
+    });
+    app.add_action(&placement);
+
     let refresh = gio::SimpleAction::new("refresh", None);
     refresh.connect_activate({
         let widget = Rc::downgrade(&widget);
@@ -101,7 +119,7 @@ fn activate(app: &adw::Application) {
         }
     });
 
-    desktop::place(&widget.view.window);
+    desktop::place(&widget.view.window, &widget.view.settings());
     widget.view.window.present();
     widget.refresh();
 }

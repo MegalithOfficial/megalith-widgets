@@ -16,12 +16,59 @@ pub enum Appearance {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Corner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+    Custom,
+}
+
+impl Corner {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "top-left" => Some(Self::TopLeft),
+            "top-right" => Some(Self::TopRight),
+            "bottom-left" => Some(Self::BottomLeft),
+            "bottom-right" => Some(Self::BottomRight),
+            "custom" => Some(Self::Custom),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::TopLeft => "top-left",
+            Self::TopRight => "top-right",
+            Self::BottomLeft => "bottom-left",
+            Self::BottomRight => "bottom-right",
+            Self::Custom => "custom",
+        }
+    }
+}
+
+impl Default for Corner {
+    fn default() -> Self {
+        std::env::var("MEGALITH_WIDGETS_CORNER")
+            .ok()
+            .and_then(|value| Self::parse(&value))
+            .filter(|corner| *corner != Self::Custom)
+            .unwrap_or(Self::TopLeft)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     pub notifications: bool,
     pub show_drafts: bool,
     pub refresh_minutes: u32,
     pub appearance: Appearance,
+    pub corner: Corner,
+    pub custom_x: i32,
+    pub custom_y: i32,
+    pub automatic_placement: bool,
 }
 
 impl Default for Settings {
@@ -31,6 +78,10 @@ impl Default for Settings {
             show_drafts: true,
             refresh_minutes: 2,
             appearance: Appearance::System,
+            corner: Corner::default(),
+            custom_x: 10,
+            custom_y: 10,
+            automatic_placement: true,
         }
     }
 }
@@ -143,4 +194,42 @@ fn path() -> PathBuf {
     glib::user_config_dir()
         .join(env!("CARGO_PKG_NAME"))
         .join("prefs.json")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Corner, Prefs};
+
+    #[test]
+    fn old_preferences_keep_their_settings() {
+        let prefs: Prefs =
+            serde_json::from_str(r#"{"settings":{"refresh_minutes":5},"pinned":["pr-id"]}"#)
+                .unwrap();
+        assert_eq!(prefs.settings.refresh_minutes, 5);
+        assert!(prefs.settings.automatic_placement);
+        assert_eq!(prefs.settings.custom_x, 10);
+        assert!(prefs.pinned.contains("pr-id"));
+    }
+
+    #[test]
+    fn custom_position_survives_a_preferences_round_trip() {
+        let mut prefs = Prefs::default();
+        prefs.settings.corner = Corner::Custom;
+        prefs.settings.custom_x = -1200;
+        prefs.settings.custom_y = 160;
+        prefs.settings.automatic_placement = false;
+        let restored: Prefs = serde_json::from_slice(&serde_json::to_vec(&prefs).unwrap()).unwrap();
+        assert!(restored == prefs);
+    }
+
+    #[test]
+    fn macos_placement_fields_are_preserved() {
+        let json = r#"{"settings":{"corner":"bottom-right","automatic_placement":false,"custom_x":80,"custom_y":120}}"#;
+        let prefs: Prefs = serde_json::from_str(json).unwrap();
+        assert_eq!(prefs.settings.corner, Corner::BottomRight);
+        assert!(!prefs.settings.automatic_placement);
+        let encoded = serde_json::to_value(&prefs).unwrap();
+        assert_eq!(encoded["settings"]["custom_x"], 80);
+        assert_eq!(encoded["settings"]["custom_y"], 120);
+    }
 }

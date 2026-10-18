@@ -21,6 +21,7 @@ cp "$BIN" "$APP/Contents/MacOS/MegalithWidgets"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp ../data/fonts/*.ttf "$APP/Contents/Resources/Fonts/"
 cp Resources/Icons/*.pdf "$APP/Contents/Resources/Icons/"
+cp ../data/icons/LICENSE "$APP/Contents/Resources/Icons/LICENSE"
 iconutil -c icns Resources/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --sign - "$APP"
 

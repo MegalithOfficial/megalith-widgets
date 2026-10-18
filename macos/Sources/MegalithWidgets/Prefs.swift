@@ -1,7 +1,7 @@
 import Foundation
 
 // Same JSON shape as src/prefs.rs in the Linux app. Unknown keys are
-// ignored on both sides, so the macOS-only `corner` is harmless there.
+// ignored on both sides, including the macOS-only placement settings.
 
 enum Appearance: String, Codable, CaseIterable {
     case system, dark, light
@@ -12,6 +12,7 @@ enum Corner: String, Codable, CaseIterable {
     case topRight = "top-right"
     case bottomLeft = "bottom-left"
     case bottomRight = "bottom-right"
+    case custom
 }
 
 struct Settings: Codable, Equatable {
@@ -20,11 +21,17 @@ struct Settings: Codable, Equatable {
     var refreshMinutes = 2
     var appearance = Appearance.system
     var corner = Corner.topLeft
+    var automaticPlacement = true
+    var customX = 10
+    var customY = 10
 
     enum CodingKeys: String, CodingKey {
         case notifications
         case showDrafts = "show_drafts"
         case refreshMinutes = "refresh_minutes"
+        case automaticPlacement = "automatic_placement"
+        case customX = "custom_x"
+        case customY = "custom_y"
         case appearance, corner
     }
 
@@ -39,6 +46,9 @@ struct Settings: Codable, Equatable {
         refreshMinutes = try container.decodeIfPresent(Int.self, forKey: .refreshMinutes) ?? defaults.refreshMinutes
         appearance = try container.decodeIfPresent(Appearance.self, forKey: .appearance) ?? defaults.appearance
         corner = try container.decodeIfPresent(Corner.self, forKey: .corner) ?? defaults.corner
+        automaticPlacement = try container.decodeIfPresent(Bool.self, forKey: .automaticPlacement) ?? defaults.automaticPlacement
+        customX = try container.decodeIfPresent(Int.self, forKey: .customX) ?? defaults.customX
+        customY = try container.decodeIfPresent(Int.self, forKey: .customY) ?? defaults.customY
     }
 }
 
