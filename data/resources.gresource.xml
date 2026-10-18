@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/dev/megalith/MegalithWidgets">
+    <file preprocess="xml-stripblanks">icons/scalable/actions/alert-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/check-circle-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/check-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/dot-fill-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/eye-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/gear-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/git-commit-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/git-merge-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/git-pull-request-closed-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/git-pull-request-draft-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/git-pull-request-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/link-external-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/pin-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/search-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/sync-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/x-symbolic.svg</file>
+  </gresource>
+</gresources>

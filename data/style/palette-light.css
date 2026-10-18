@@ -1,0 +1,18 @@
+/* Ayu Light, the light theme used in Zed. */
+@define-color w_bg #fcfcfc;
+@define-color w_panel #f3f4f5;
+@define-color w_border #d8dce0;
+@define-color w_hover rgba(86, 114, 143, 0.08);
+@define-color w_active rgba(86, 114, 143, 0.15);
+@define-color w_text #5c6166;
+@define-color w_muted #8a9199;
+@define-color w_faint #adaeb1;
+@define-color w_accent #399ee6;
+@define-color w_blue #399ee6;
+@define-color w_green #6cbf43;
+@define-color w_red #e65050;
+@define-color w_purple #a37acc;
+@define-color w_amber #e59645;
+@define-color w_add #6cbf43;
+@define-color w_del #e65050;
+@define-color w_shadow rgba(0, 0, 0, 0.14);

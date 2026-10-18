@@ -1,0 +1,316 @@
+/* Colors come from palette-{dark,light}.css. */
+
+window.megalith-widgets,
+window.megalith-widgets.background {
+  background: none;
+  box-shadow: none;
+}
+
+/* ── Card ──────────────────────────────────────────── */
+
+.card {
+  margin: 14px;
+  border-radius: 20px;
+  background-color: alpha(@w_bg, 0.86);
+  border: 1px solid alpha(@w_text, 0.09);
+  box-shadow: 0 8px 26px @w_shadow;
+  color: @w_text;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 13px;
+  animation: card-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.mono {
+  font-family: "Lilex", monospace;
+  font-feature-settings: "tnum", "calt" 0;
+}
+
+/* ── Header: title + tab bar ──────────────────────── */
+
+.header {
+  padding: 10px 10px 8px 16px;
+  border-bottom: 1px solid alpha(@w_border, 0.55);
+}
+
+.glyph { color: @w_muted; }
+.widget-title { font-weight: 600; margin-right: 8px; }
+
+button.tab {
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  color: @w_muted;
+  font-weight: 500;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+button.tab:hover { background-color: @w_hover; color: @w_text; }
+button.tab.active { background-color: @w_active; color: @w_text; }
+button.tab .count { font-size: 11.5px; color: @w_faint; transition: color 140ms ease; }
+button.tab.active .count { color: @w_muted; }
+
+button.icon-button {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  color: @w_muted;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+button.icon-button:hover { background-color: @w_hover; color: @w_text; }
+button.icon-button:active { background-color: @w_active; }
+button.icon-button.spinning image { animation: spin 700ms linear infinite; }
+button.icon-button.stale { color: @w_amber; }
+
+/* MenuButton wraps a real button; style that one. */
+menubutton.icon-button { padding: 0; }
+menubutton.icon-button > button {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  color: @w_muted;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+menubutton.icon-button > button:hover { background-color: @w_hover; color: @w_text; }
+menubutton.icon-button > button:checked { background-color: @w_active; color: @w_text; }
+
+.updated { font-size: 11.5px; color: @w_faint; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Rows ──────────────────────────────────────────── */
+
+.body { padding: 6px 6px 8px 6px; }
+
+list.prs,
+list.prs > row { background: none; }
+
+list.prs > row {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  outline: none;
+  transition: background-color 120ms ease;
+}
+list.prs > row:hover { background-color: @w_hover; }
+list.prs > row:active { background-color: @w_active; }
+list.prs > row:focus-visible { box-shadow: inset 0 0 0 1px alpha(@w_accent, 0.7); }
+
+list.prs > row.enter { animation: row-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+list.prs > row.enter.d1 { animation-delay: 30ms; }
+list.prs > row.enter.d2 { animation-delay: 60ms; }
+list.prs > row.enter.d3 { animation-delay: 90ms; }
+list.prs > row.enter.d4 { animation-delay: 120ms; }
+list.prs > row.enter.d5 { animation-delay: 150ms; }
+list.prs > row.enter.d6 { animation-delay: 180ms; }
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.pr-title { color: @w_text; }
+row.draft .pr-title { color: @w_muted; }
+.pr-ref { font-size: 12px; color: @w_muted; }
+.age { font-size: 12px; color: @w_faint; }
+.diffstat { font-size: 12px; }
+
+/* Tones shared by state icons, CI marks and status labels. */
+.green  { color: @w_green; }
+.red    { color: @w_red; }
+.purple { color: @w_purple; }
+.blue   { color: @w_blue; }
+.amber  { color: @w_amber; }
+.muted  { color: @w_faint; }
+.add    { color: @w_add; }
+.del    { color: @w_del; }
+
+.status { font-size: 12px; font-weight: 500; }
+.ci.amber { animation: pulse 1s ease-in-out infinite alternate; }
+
+@keyframes pulse {
+  from { opacity: 0.35; }
+  to   { opacity: 1; }
+}
+
+/* ── Placeholder, empty and error states ──────────── */
+
+.placeholder { min-height: 30px; padding: 0 10px; }
+.placeholder .bone {
+  min-height: 9px;
+  border-radius: 5px;
+  background-color: @w_hover;
+  animation: shimmer 1.1s ease-in-out infinite alternate;
+}
+.placeholder .bone.dot { min-width: 14px; min-height: 14px; border-radius: 7px; }
+.placeholder.p1 .bone { animation-delay: 120ms; }
+.placeholder.p2 .bone { animation-delay: 240ms; }
+.placeholder.p3 .bone { animation-delay: 360ms; }
+.placeholder.p4 .bone { animation-delay: 480ms; }
+
+@keyframes shimmer {
+  from { opacity: 0.4; }
+  to   { opacity: 1; }
+}
+
+.state-icon { color: @w_muted; animation: rise-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.state-icon.done { color: @w_green; }
+.state-icon.error { color: @w_red; }
+.state-title { font-weight: 600; animation: rise-in 420ms 40ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.state-body { font-size: 12px; color: @w_muted; animation: rise-in 420ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Links, toast ─────────────────────────────────── */
+
+button.text-link {
+  min-height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: none;
+  box-shadow: none;
+  color: @w_muted;
+  font-size: 11.5px;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+button.text-link:hover { background-color: @w_hover; color: @w_text; }
+
+.pin { color: @w_accent; }
+
+/* ── Context menu ──────────────────────────────────── */
+
+popover.context-menu > contents {
+  padding: 4px;
+  border-radius: 10px;
+  background-color: @w_panel;
+  border: 1px solid alpha(@w_border, 0.9);
+  box-shadow: 0 8px 22px @w_shadow;
+  color: @w_text;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 13px;
+  animation: menu-in 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+popover.context-menu modelbutton {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  transition: background-color 100ms ease;
+}
+popover.context-menu modelbutton:hover,
+popover.context-menu modelbutton:focus { background-color: @w_hover; }
+popover.context-menu modelbutton accelerator { color: @w_faint; font-family: "Lilex", monospace; font-size: 11.5px; }
+popover.context-menu separator { margin: 4px 6px; background-color: alpha(@w_border, 0.6); }
+
+.toast {
+  margin-bottom: 4px;
+  padding: 4px 6px 4px 14px;
+  border-radius: 8px;
+  background-color: @w_panel;
+  border: 1px solid alpha(@w_border, 0.9);
+  box-shadow: 0 6px 18px @w_shadow;
+  font-size: 12px;
+}
+.toast button.text-link { color: @w_accent; font-weight: 500; }
+
+scrollbar { opacity: 0; transition: opacity 200ms ease; }
+scrolledwindow:hover scrollbar { opacity: 1; }
+
+/* ── Settings ─────────────────────────────────────── */
+
+popover.settings > contents {
+  padding: 6px;
+  min-width: 340px;
+  border-radius: 12px;
+  background-color: @w_panel;
+  border: 1px solid alpha(@w_border, 0.9);
+  box-shadow: 0 10px 26px @w_shadow;
+  color: @w_text;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 13px;
+  animation: menu-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-title { font-weight: 600; padding: 6px 10px 8px 10px; }
+.settings-row { padding: 7px 10px; border-radius: 6px; }
+.settings-label { font-weight: 500; }
+.settings-hint { font-size: 11.5px; color: @w_faint; }
+
+.settings-footer {
+  margin-top: 6px;
+  padding: 6px 4px 0 10px;
+  border-top: 1px solid alpha(@w_border, 0.55);
+}
+.version { font-size: 11.5px; color: @w_faint; }
+
+.segmented {
+  padding: 2px;
+  border-radius: 7px;
+  background-color: @w_hover;
+}
+.segmented > button {
+  min-height: 22px;
+  padding: 0 9px;
+  border-radius: 5px;
+  background: none;
+  box-shadow: none;
+  color: @w_muted;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.segmented > button:hover { color: @w_text; }
+.segmented > button:checked { background-color: @w_bg; color: @w_text; box-shadow: 0 1px 2px @w_shadow; }
+
+popover.settings switch {
+  min-width: 30px;
+  min-height: 16px;
+  padding: 2px;
+  border-radius: 999px;
+  background-color: @w_active;
+  border: none;
+  transition: background-color 160ms ease;
+}
+popover.settings switch:checked { background-color: @w_accent; }
+popover.settings switch > slider {
+  min-width: 16px;
+  min-height: 16px;
+  margin: 0;
+  border-radius: 999px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: margin 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.repo-name { font-size: 12px; }
+
+/* ── Search ───────────────────────────────────────── */
+
+text.search {
+  min-height: 26px;
+  background: none;
+  color: @w_text;
+  caret-color: @w_accent;
+}
+text.search > placeholder { color: @w_faint; }

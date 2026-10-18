@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Megalith Widgets
+Comment=Pull requests waiting on your review
+Exec=megalith-widgets
+Icon=dev.megalith.MegalithWidgets
+Terminal=false
+Categories=Development;
+Keywords=github;pull request;review;widget;
+StartupNotify=false
+X-GNOME-UsesNotifications=true

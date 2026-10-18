@@ -1,0 +1,18 @@
+/* GitHub Dark Tritanopia, the dark theme used in Zed. */
+@define-color w_bg #0d1117;
+@define-color w_panel #010409;
+@define-color w_border #3d444d;
+@define-color w_hover rgba(101, 108, 118, 0.16);
+@define-color w_active rgba(101, 108, 118, 0.28);
+@define-color w_text #f0f6fc;
+@define-color w_muted #9198a1;
+@define-color w_faint #656c76;
+@define-color w_accent #4493f8;
+@define-color w_blue #58a6ff;
+@define-color w_green #3fb950;
+@define-color w_red #f85149;
+@define-color w_purple #be8fff;
+@define-color w_amber #d29922;
+@define-color w_add #58a6ff;
+@define-color w_del #f85149;
+@define-color w_shadow rgba(1, 4, 9, 0.45);
