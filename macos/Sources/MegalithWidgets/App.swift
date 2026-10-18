@@ -45,10 +45,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func observe() {
         // @Published emits before the value is stored, so use what it sends.
-        store.$prefs.map(\.settings).removeDuplicates(by: {
-            $0.corner == $1.corner && $0.automaticPlacement == $1.automaticPlacement
-                && $0.customX == $1.customX && $0.customY == $1.customY
-        }).dropFirst()
+        let settings = store.$prefs.map { prefs in prefs.settings }
+        let placement = settings.removeDuplicates { (previous: Settings, current: Settings) in
+            guard previous.corner == current.corner,
+                  previous.automaticPlacement == current.automaticPlacement else { return false }
+            return previous.customX == current.customX && previous.customY == current.customY
+        }
+        placement.dropFirst()
             .sink { [weak self] settings in
                 self?.place(settings)
             }
