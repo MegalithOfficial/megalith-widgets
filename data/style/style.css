@@ -6,7 +6,7 @@ window.megalith-widgets.background {
   box-shadow: none;
 }
 
-/* ── Card ──────────────────────────────────────────── */
+/* Cards */
 
 .card {
   margin: 14px;
@@ -29,8 +29,6 @@ window.megalith-widgets.background {
   font-family: "Lilex", monospace;
   font-feature-settings: "tnum", "calt" 0;
 }
-
-/* ── Header: title + tab bar ──────────────────────── */
 
 .header {
   padding: 10px 10px 8px 16px;
@@ -70,7 +68,6 @@ button.icon-button:active { background-color: @w_active; }
 button.icon-button.spinning image { animation: spin 700ms linear infinite; }
 button.icon-button.stale { color: @w_amber; }
 
-/* MenuButton wraps a real button; style that one. */
 menubutton.icon-button { padding: 0; }
 menubutton.icon-button > button {
   min-width: 26px;
@@ -91,7 +88,7 @@ menubutton.icon-button > button:checked { background-color: @w_active; color: @w
   to { transform: rotate(360deg); }
 }
 
-/* ── Rows ──────────────────────────────────────────── */
+/* Rows */
 
 .body { padding: 6px 6px 8px 6px; }
 
@@ -128,7 +125,6 @@ row.draft .pr-title { color: @w_muted; }
 .age { font-size: 12px; color: @w_faint; }
 .diffstat { font-size: 12px; }
 
-/* Tones shared by state icons, CI marks and status labels. */
 .green  { color: @w_green; }
 .red    { color: @w_red; }
 .purple { color: @w_purple; }
@@ -146,7 +142,7 @@ row.draft .pr-title { color: @w_muted; }
   to   { opacity: 1; }
 }
 
-/* ── Placeholder, empty and error states ──────────── */
+/* Placeholder, empty and error states */
 
 .placeholder { min-height: 30px; padding: 0 10px; }
 .placeholder .bone {
@@ -177,7 +173,7 @@ row.draft .pr-title { color: @w_muted; }
   to   { opacity: 1; transform: none; }
 }
 
-/* ── Links, toast ─────────────────────────────────── */
+/* Links, toast */
 
 button.text-link {
   min-height: 22px;
@@ -193,7 +189,7 @@ button.text-link:hover { background-color: @w_hover; color: @w_text; }
 
 .pin { color: @w_accent; }
 
-/* ── Context menu ──────────────────────────────────── */
+/* Context menu */
 
 popover.context-menu > contents {
   padding: 4px;
@@ -237,7 +233,7 @@ popover.context-menu separator { margin: 4px 6px; background-color: alpha(@w_bor
 scrollbar { opacity: 0; transition: opacity 200ms ease; }
 scrolledwindow:hover scrollbar { opacity: 1; }
 
-/* ── Settings ─────────────────────────────────────── */
+/* Settings */
 
 popover.settings > contents {
   padding: 6px;
@@ -305,7 +301,7 @@ popover.settings switch > slider {
 
 .repo-name { font-size: 12px; }
 
-/* ── Search ───────────────────────────────────────── */
+/* Search */
 
 text.search {
   min-height: 26px;

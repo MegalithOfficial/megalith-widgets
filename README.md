@@ -1,131 +1,60 @@
 # Megalith Widgets
 
-A desktop widget for GitHub pull request reviews on Linux and macOS.
-The Linux app uses Rust, GTK 4 and libadwaita; the macOS app uses SwiftUI
-and AppKit.
+A desktop widget for GitHub reviews on Linux and macOS. See review requests,
+new commits since your last review, CI results and merge conflicts without
+keeping GitHub open.
 
-It tracks review requests and new commits on pull requests you've already
-reviewed, alongside CI results, merge conflicts and diff sizes. Desktop
-notifications alert you when a pull request needs your attention. You can pin
-pull requests, ignore them or hide repositories from the widget.
+![Megalith Widgets](docs/widget.gif)
 
 ## Linux
 
-Building requires Rust 1.88+, GTK 4.12+, libadwaita 1.6+, Pango 1.56+ and
-gtk4-layer-shell, including development files for the system libraries.
+Requires Rust 1.88+, GTK 4.12+, libadwaita 1.6+, Pango 1.56+ and
+gtk4-layer-shell, including development files.
 
-On Arch Linux, install the libraries and GitHub CLI with:
+On Arch Linux:
 
 ```sh
 sudo pacman -S gtk4 libadwaita gtk4-layer-shell github-cli
-```
-
-Sign in with the [GitHub CLI](https://cli.github.com/), then run the installer
-from the repository directory:
-
-```sh
 gh auth login
 ./install.sh
 ```
 
-The installer builds a release binary and installs it to `~/.local/bin`, along
-with a desktop entry and icon. Installation is per user.
+The installer builds a release binary, installs it to `~/.local/bin` and
+registers startup at login. KDE, Xfce, Cinnamon, MATE and LXQt use XDG autostart;
+Sway, i3 and Hyprland get a startup command in their existing user configs.
+Custom config paths and other WMs need their own startup command:
+`~/.local/bin/megalith-widgets`.
 
-Alternatively, supply a token through `GITHUB_TOKEN` in the widget's launch
-environment.
+GNOME uses the bundled shell extension. Log out and back in if it isn't
+detected after installation. Other supported Wayland compositors use layer-shell.
 
-To uninstall, run `./install.sh --uninstall`. Your settings are preserved.
-
-### Desktop integration
-
-On **GNOME Wayland**, the bundled shell extension launches the widget on every
-workspace and keeps it out of the dock, Alt+Tab and overview. The extension
-supports GNOME Shell 49, 50 and 51. If it isn't detected
-after installation, log out and back in, then enable it:
-
-```sh
-gnome-extensions enable megalith-widgets@MegalithOfficial
-```
-
-On **Wayland compositors with layer-shell support**, the widget sits below other
-windows. Both integrations support the corner and Custom position settings.
-`MEGALITH_WIDGETS_CORNER` sets the initial corner before a position is saved.
-Other environments use a borderless window with native window dragging;
-restoring coordinates requires GNOME or layer-shell support.
-
-Outside GNOME, the installer adds an autostart entry. Run
-`~/.local/bin/megalith-widgets` to start it immediately after installation.
-
-To build and run without gtk4-layer-shell:
-
-```sh
-cargo build --release --no-default-features
-./target/release/megalith-widgets
-```
+To remove the app, run `./install.sh --uninstall`. Your settings are kept.
 
 ## macOS
 
-Building requires macOS 14+, Swift 5.9+ and the Xcode command line tools.
-Install the GitHub CLI with Homebrew, sign in and run the build script:
+Requires macOS 14+ and the Xcode command line tools.
 
 ```sh
-xcode-select --install
 brew install gh
 gh auth login
 cd macos
 ./build.sh --install
 ```
 
-The script builds `macos/build/Megalith Widgets.app`, copies it to `/Applications`
-and opens it. Run `./build.sh` without `--install` to build the app bundle only.
+Installs to `/Applications`. The menu bar item provides settings and quit;
+startup at login and desktop widget avoidance are available in settings.
 
-The widget sits on the desktop, above the wallpaper and below other windows, on
-every Space. It has no Dock icon; the menu bar icon offers refresh, settings and
-quit. **Avoid desktop widgets** looks for free space near the selected corner using
-desktop window bounds. It runs at launch and when the corner, display layout or
-Space changes; use **Find Free Space** in the menu bar to run it again after
-moving other widgets.
+## Settings
 
-Custom positions remain fixed. Widget avoidance and opening at login can be
-enabled in settings.
-
-The build script signs the app ad hoc for local use; it does not notarize it.
-
-## Configuration
-
-Both apps refresh every two minutes by default. Settings include the refresh
-interval, desktop notifications, draft visibility, repository filters and
-system, light or dark appearance.
-
-Choose one of the four corners in **Position**, or select **Custom** and click
-**Set position**. Drag the **Reviews** title with settings open, then click
-**Save position** to save and lock it. **Re-set position** unlocks it again;
-**Reset** clears the saved position and returns it to the top left.
-Coordinates are stored in `prefs.json` as logical pixels from the top-left of
-the main display's usable area.
-
-Add repositories in settings using `owner/repo` or a GitHub repository URL.
-Added repositories stay in the list between sessions and use the same review
-filters as automatically discovered repositories.
-
-Preferences use the same JSON format on both platforms and are stored locally:
-
-- **Linux:** `~/.config/megalith-widgets/prefs.json`, or
-  `$XDG_CONFIG_HOME/megalith-widgets/prefs.json` when set.
-- **macOS:** `~/Library/Application Support/megalith-widgets/prefs.json`.
+Add repositories with `owner/repo` or a GitHub URL. Adjust notifications,
+refresh interval, draft visibility and appearance from the gear menu.
+For a custom position, click **Set position**, drag the **Reviews** title,
+then **Save position** to lock it.
 
 ## License
 
-Copyright (c) 2026 MegalithOfficial.
+Copyright (c) 2026 MegalithOfficial. [GPL-3.0-only](LICENSE).
 
-The Linux and macOS application source code is licensed under the
-[GNU General Public License v3.0](LICENSE) (GPL-3.0-only).
-Bundled fonts and icons retain their respective licenses listed below.
-
-## Credits
-
-- [GitHub Octicons](https://github.com/primer/octicons) — MIT License.
-- [IBM Plex Sans](https://github.com/IBM/plex) and
-  [Lilex](https://github.com/mishamyrt/Lilex) — SIL Open Font License.
-  License files are included in [`data/fonts/`](data/fonts/).
-- Colors follow Zed's *GitHub Dark Tritanopia* and *Ayu Light* themes.
+[Octicons](https://github.com/primer/octicons) use the MIT License.
+[IBM Plex Sans](https://github.com/IBM/plex) and
+[Lilex](https://github.com/mishamyrt/Lilex) use the SIL Open Font License.
