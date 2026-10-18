@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-24.04
     container: archlinux:base-devel
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     env:
       CARGO_TERM_COLOR: always
       CARGO_PROFILE_DEV_DEBUG: '0'
@@ -37,12 +40,15 @@ jobs:
         run: cargo build --release --locked
       - name: Package binary and extension
         run: |
-          mkdir -p dist/licenses
-          cp target/release/megalith-widgets LICENSE dist/
-          cp data/fonts/OFL-*.txt dist/licenses/
-          cp data/icons/LICENSE dist/licenses/Octicons.txt
-          cp -R gnome-extension dist/
-          tar -C dist -czf megalith-widgets-linux-x86_64.tar.gz .
+          mkdir -p dist/megalith-widgets-linux-x86_64/{data,scripts,licenses}
+          cp target/release/megalith-widgets LICENSE install.sh dist/megalith-widgets-linux-x86_64/
+          cp docs/install-linux.md dist/megalith-widgets-linux-x86_64/README.md
+          cp data/dev.megalith.MegalithWidgets.{desktop,svg} dist/megalith-widgets-linux-x86_64/data/
+          cp scripts/autostart.sh dist/megalith-widgets-linux-x86_64/scripts/
+          cp data/fonts/OFL-*.txt dist/megalith-widgets-linux-x86_64/licenses/
+          cp data/icons/LICENSE dist/megalith-widgets-linux-x86_64/licenses/Octicons.txt
+          cp -R gnome-extension dist/megalith-widgets-linux-x86_64/
+          tar -C dist -czf megalith-widgets-linux-x86_64.tar.gz megalith-widgets-linux-x86_64
       - uses: actions/upload-artifact@v7
         with:
           name: megalith-widgets-linux-x86_64
@@ -74,12 +80,16 @@ jobs:
         env:
           ARCH: ${{ matrix.arch }}
         run: |
-          ditto -c -k --sequesterRsrc --keepParent \
-            "macos/build/Megalith Widgets.app" "megalith-widgets-macos-$ARCH.zip"
-          zip -j "megalith-widgets-macos-$ARCH.zip" LICENSE data/fonts/OFL-*.txt
+          mkdir -p dmg-root
+          ditto "macos/build/Megalith Widgets.app" "dmg-root/Megalith Widgets.app"
+          ln -s /Applications dmg-root/Applications
+          cp docs/install-macos.txt dmg-root/README.txt
+          hdiutil create -volname "Megalith Widgets" -srcfolder dmg-root \
+            -ov -format UDZO "megalith-widgets-macos-$ARCH.dmg"
+          hdiutil verify "megalith-widgets-macos-$ARCH.dmg"
       - uses: actions/upload-artifact@v7
         with:
           name: megalith-widgets-macos-${{ matrix.arch }}
-          path: megalith-widgets-macos-${{ matrix.arch }}.zip
+          path: megalith-widgets-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
           retention-days: 14

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Builds and installs Megalith Widgets for the current user.
+# Installs a release package, or builds from a source checkout.
 #
-#   ./install.sh              build and install
+#   ./install.sh              install for the current user
 #   ./install.sh --uninstall  remove everything this script installed
 #
 # On GNOME the bundled shell extension launches the widget and pins it to the
@@ -38,9 +38,18 @@ uninstall() {
 }
 
 install_widget() {
-    cargo build --release
+    local source_binary
+    if [[ -f Cargo.toml ]]; then
+        cargo build --release --locked
+        source_binary="target/release/$BINARY"
+    elif [[ -x $BINARY ]]; then
+        source_binary=$BINARY
+    else
+        echo "No prebuilt binary or source checkout found." >&2
+        return 1
+    fi
 
-    install -Dm755 "target/release/$BINARY" "$BIN_DIR/$BINARY"
+    install -Dm755 "$source_binary" "$BIN_DIR/$BINARY"
     install -Dm644 "data/$APP_ID.svg" "$ICON_FILE"
     # Absolute Exec path: ~/.local/bin isn't on every session's PATH.
     write_desktop_entry "data/$APP_ID.desktop" "$DESKTOP_FILE" "$BIN_DIR/$BINARY"
@@ -55,7 +64,6 @@ install_widget() {
         if gnome-extensions enable "$EXTENSION" 2>/dev/null; then
             echo "Installed. The extension is enabled and will launch the widget."
         else
-
             echo "Installed. Log out and back in, then run:"
             echo "    gnome-extensions enable $EXTENSION"
         fi

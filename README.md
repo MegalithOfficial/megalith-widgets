@@ -6,7 +6,16 @@ keeping GitHub open.
 
 ![Megalith Widgets](docs/widget.gif)
 
-## Linux
+## Install
+
+Tagged [releases](https://github.com/MegalithOfficial/megalith-widgets/releases)
+include a Linux archive with `./install.sh` and macOS DMGs for Apple Silicon and
+Intel. Open the DMG and drag the app into Applications. Both platforms use
+`gh auth login` to connect to GitHub.
+
+## Build from source
+
+### Linux
 
 Requires Rust 1.88+, GTK 4.12+, libadwaita 1.6+, Pango 1.56+ and
 gtk4-layer-shell, including development files.
@@ -30,7 +39,7 @@ detected after installation. Other supported Wayland compositors use layer-shell
 
 To remove the app, run `./install.sh --uninstall`. Your settings are kept.
 
-## macOS
+### macOS
 
 Requires macOS 14+ and the Xcode command line tools.
 

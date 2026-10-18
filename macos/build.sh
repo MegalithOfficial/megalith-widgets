@@ -16,12 +16,14 @@ swift build -c release
 BIN="$(swift build -c release --show-bin-path)/MegalithWidgets"
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Fonts" "$APP/Contents/Resources/Icons"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Fonts" "$APP/Contents/Resources/Icons" "$APP/Contents/Resources/Licenses"
 cp "$BIN" "$APP/Contents/MacOS/MegalithWidgets"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp ../data/fonts/*.ttf "$APP/Contents/Resources/Fonts/"
 cp Resources/Icons/*.pdf "$APP/Contents/Resources/Icons/"
 cp ../data/icons/LICENSE "$APP/Contents/Resources/Icons/LICENSE"
+cp ../LICENSE "$APP/Contents/Resources/Licenses/GPL-3.0.txt"
+cp ../data/fonts/OFL-*.txt "$APP/Contents/Resources/Licenses/"
 iconutil -c icns Resources/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --sign - "$APP"
 

@@ -1,0 +1,16 @@
+Megalith Widgets for macOS
+
+1. Drag Megalith Widgets.app to Applications.
+2. Install GitHub CLI and sign in from Terminal:
+
+   brew install gh
+   gh auth login
+
+3. Open Megalith Widgets from Applications. Settings are in the menu bar.
+
+Choose the arm64 download for Apple Silicon, or x86_64 for an Intel Mac.
+Requires macOS 14 or later.
+
+This build is signed ad hoc and is not notarized. macOS may block its first
+launch. Apple's instructions for opening an app from an unknown developer:
+https://support.apple.com/guide/mac-help/mh40616/mac
