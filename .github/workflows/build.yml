@@ -1,0 +1,85 @@
+name: Build
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux x86_64
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    timeout-minutes: 30
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+    steps:
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            git rust pkgconf glib2-devel gtk4 libadwaita pango gtk4-layer-shell
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Run Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - name: Check without layer-shell
+        run: cargo check --locked --no-default-features
+      - name: Run existing tests
+        run: cargo test --locked
+      - name: Build release binary
+        run: cargo build --release --locked
+      - name: Package binary and extension
+        run: |
+          mkdir -p dist/licenses
+          cp target/release/megalith-widgets LICENSE dist/
+          cp data/fonts/OFL-*.txt dist/licenses/
+          cp data/icons/LICENSE dist/licenses/Octicons.txt
+          cp -R gnome-extension dist/
+          tar -C dist -czf megalith-widgets-linux-x86_64.tar.gz .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: megalith-widgets-linux-x86_64
+          path: megalith-widgets-linux-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Run existing tests
+        run: swift test --package-path macos
+      - name: Build app bundle
+        run: ./macos/build.sh
+      - name: Package app bundle
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            "macos/build/Megalith Widgets.app" "megalith-widgets-macos-$ARCH.zip"
+          zip -j "megalith-widgets-macos-$ARCH.zip" LICENSE data/fonts/OFL-*.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: megalith-widgets-macos-${{ matrix.arch }}
+          path: megalith-widgets-macos-${{ matrix.arch }}.zip
+          if-no-files-found: error
+          retention-days: 14

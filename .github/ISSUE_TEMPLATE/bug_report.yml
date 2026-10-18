@@ -1,0 +1,35 @@
+name: Bug report
+description: Report something that isn't working.
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open settings
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        App version or commit:
+        OS and version:
+        Desktop / window manager (Linux):
+        Wayland or X11 (Linux):
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Logs or screenshots
+      description: Add anything that helps show the problem.
